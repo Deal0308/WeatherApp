@@ -19,12 +19,14 @@ struct CurrentWeather: Decodable, Equatable {
     let humidity: Int?
     let weatherCode: Int?
     let windSpeed: Double?
+    let isDay: Int?
 
     enum CodingKeys: String, CodingKey {
         case temperature = "temperature_2m"
         case humidity = "relative_humidity_2m"
         case weatherCode = "weather_code"
         case windSpeed = "wind_speed_10m"
+        case isDay = "is_day"
     }
 }
 
@@ -46,40 +48,59 @@ struct DailyWeather: Decodable, Equatable {
 }
 
 /// Human-readable weather state paired with an SF Symbol.
+enum WeatherConditionKind: Equatable {
+    case clear
+    case mainlyClear
+    case partlyCloudy
+    case overcast
+    case fog
+    case drizzle
+    case freezingDrizzle
+    case rain
+    case freezingRain
+    case snow
+    case rainShowers
+    case snowShowers
+    case thunderstorms
+    case unknown
+}
+
+/// Human-readable weather state paired with an SF Symbol and a reusable condition kind.
 struct WeatherCondition: Equatable {
+    let kind: WeatherConditionKind
     let description: String
     let symbolName: String
 
     static func condition(for code: Int) -> WeatherCondition {
         switch code {
         case 0:
-            return WeatherCondition(description: "Clear sky", symbolName: "sun.max.fill")
+            return WeatherCondition(kind: .clear, description: "Clear sky", symbolName: "sun.max.fill")
         case 1:
-            return WeatherCondition(description: "Mainly clear", symbolName: "sun.min.fill")
+            return WeatherCondition(kind: .mainlyClear, description: "Mainly clear", symbolName: "sun.min.fill")
         case 2:
-            return WeatherCondition(description: "Partly cloudy", symbolName: "cloud.sun.fill")
+            return WeatherCondition(kind: .partlyCloudy, description: "Partly cloudy", symbolName: "cloud.sun.fill")
         case 3:
-            return WeatherCondition(description: "Overcast", symbolName: "cloud.fill")
+            return WeatherCondition(kind: .overcast, description: "Overcast", symbolName: "cloud.fill")
         case 45, 48:
-            return WeatherCondition(description: "Fog", symbolName: "cloud.fog.fill")
+            return WeatherCondition(kind: .fog, description: "Fog", symbolName: "cloud.fog.fill")
         case 51, 53, 55:
-            return WeatherCondition(description: "Drizzle", symbolName: "cloud.drizzle.fill")
+            return WeatherCondition(kind: .drizzle, description: "Drizzle", symbolName: "cloud.drizzle.fill")
         case 56, 57:
-            return WeatherCondition(description: "Freezing drizzle", symbolName: "cloud.sleet.fill")
+            return WeatherCondition(kind: .freezingDrizzle, description: "Freezing drizzle", symbolName: "cloud.sleet.fill")
         case 61, 63, 65:
-            return WeatherCondition(description: "Rain", symbolName: "cloud.rain.fill")
+            return WeatherCondition(kind: .rain, description: "Rain", symbolName: "cloud.rain.fill")
         case 66, 67:
-            return WeatherCondition(description: "Freezing rain", symbolName: "cloud.sleet.fill")
+            return WeatherCondition(kind: .freezingRain, description: "Freezing rain", symbolName: "cloud.sleet.fill")
         case 71, 73, 75, 77:
-            return WeatherCondition(description: "Snow", symbolName: "snowflake")
+            return WeatherCondition(kind: .snow, description: "Snow", symbolName: "snowflake")
         case 80, 81, 82:
-            return WeatherCondition(description: "Rain showers", symbolName: "cloud.heavyrain.fill")
+            return WeatherCondition(kind: .rainShowers, description: "Rain showers", symbolName: "cloud.heavyrain.fill")
         case 85, 86:
-            return WeatherCondition(description: "Snow showers", symbolName: "cloud.snow.fill")
+            return WeatherCondition(kind: .snowShowers, description: "Snow showers", symbolName: "cloud.snow.fill")
         case 95, 96, 99:
-            return WeatherCondition(description: "Thunderstorms", symbolName: "cloud.bolt.rain.fill")
+            return WeatherCondition(kind: .thunderstorms, description: "Thunderstorms", symbolName: "cloud.bolt.rain.fill")
         default:
-            return WeatherCondition(description: "Unknown conditions", symbolName: "questionmark.circle.fill")
+            return WeatherCondition(kind: .unknown, description: "Unknown conditions", symbolName: "questionmark.circle.fill")
         }
     }
 }
@@ -102,6 +123,7 @@ struct WeatherSummary: Equatable, Identifiable {
     let humidity: Int
     let windSpeed: Double
     let condition: WeatherCondition
+    let isDay: Bool
 
     var temperatureText: String {
         "\(Int(temperature.rounded()))°F"

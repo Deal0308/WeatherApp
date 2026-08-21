@@ -29,7 +29,7 @@ struct WeatherService: WeatherProviding {
         components?.queryItems = [
             URLQueryItem(name: "latitude", value: coordinateQueryValue(latitude)),
             URLQueryItem(name: "longitude", value: coordinateQueryValue(longitude)),
-            URLQueryItem(name: "current", value: "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m"),
+            URLQueryItem(name: "current", value: "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day"),
             URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"),
             URLQueryItem(name: "temperature_unit", value: "fahrenheit"),
             URLQueryItem(name: "wind_speed_unit", value: "mph"),

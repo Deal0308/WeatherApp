@@ -292,7 +292,8 @@ final class WeatherViewModel: ObservableObject {
             temperature: temperature,
             humidity: humidity,
             windSpeed: windSpeed,
-            condition: WeatherCondition.condition(for: weatherCode)
+            condition: WeatherCondition.condition(for: weatherCode),
+            isDay: report.current.isDay.map { $0 != 0 } ?? true
         )
     }
 
