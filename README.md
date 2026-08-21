@@ -1,274 +1,179 @@
-SkyCast Weather
+# WeatherApp - SkyCast
 
-SkyCast is a SwiftUI weather application that lets users search for a city or location and view its current conditions. The app first resolves the search into geographic coordinates with the Open-Meteo Geocoding API, then uses those coordinates to retrieve live weather data from the Open-Meteo Forecast API.
+SkyCast is a SwiftUI weather app that searches Open-Meteo for locations, lets the user choose among ambiguous results, displays current conditions, shows a five-day forecast, and saves favorite locations. An internet connection is required for weather data. Open-Meteo does not require an API key.
 
+## Features
 
+- Location search using Open-Meteo Geocoding
+- Multiple-location selection when a search returns more than one match
+- Current temperature, humidity, wind speed, and condition
+- Five-day forecast with high, low, condition, and precipitation probability
+- Saved favorite locations with add, remove, list, delete, and direct-load behavior
+- Retry support for previous searches or selected locations
+- Blue-to-indigo SwiftUI design with Material cards
+- Dynamic Type-friendly layout and VoiceOver labels
 
+## Architecture
 
+The app uses MVVM:
 
+- `Models`: geocoding, weather, forecast, and saved-location models
+- `Services`: API errors, geocoding, weather, and saved-location persistence
+- `ViewModels`: `WeatherViewModel` coordinates search, selection, weather loading, retry, and favorite state
+- `Views`: `ContentView`, location selection, saved locations, and forecast cards
+- `Documentation`: implementation report
 
-Features
+Networking, decoding, persistence, and workflow logic are kept out of SwiftUI views.
 
-Search by city or location name
+## APIs
 
-Two-step geocoding and weather request workflow
+Geocoding endpoint:
 
-Current temperature in Fahrenheit
-
-Relative humidity
-
-Wind speed in miles per hour
-
-Human-readable weather conditions
-
-WMO weather-code mapping with matching SF Symbols
-
-Loading, empty, success, and error states
-
-Retry support after failed requests
-
-Protection against blank, duplicate, cancelled, and stale searches
-
-Responsive interface supporting smaller devices, Dynamic Type, Light Mode, and Dark Mode
-
-VoiceOver-friendly labels and values
-
-Screenshots
-
-Add the two required screenshots to an Images folder and update the filenames below.
-
-Location Search
-
-Current Weather
-
-Images/location-search.png
-
-Images/current-weather.png
-
-<!-- After adding the screenshots, replace the table above with:
-| Location Search | Current Weather |
-| --- | --- |
-| ![SkyCast location search](Images/location-search.png) | ![SkyCast current weather](Images/current-weather.png) |
--->
-
-How It Works
-
-The user enters a city or location.
-
-WeatherViewModel trims and validates the search.
-
-GeocodingService sends the location name to Open-Meteo Geocoding.
-
-The service returns the first matching location's latitude and longitude.
-
-WeatherService uses those coordinates to request current conditions.
-
-The ViewModel converts the response into presentation-ready weather data.
-
-SwiftUI displays the location, temperature, humidity, wind speed, weather condition, and corresponding symbol.
-
-If geocoding returns no results, SkyCast stops the workflow and does not make an unnecessary forecast request.
-
-Architecture
-
-SkyCast follows the Model-View-ViewModel pattern and keeps networking outside the SwiftUI interface.
-
-WeatherApp/
-├── Models/
-│   ├── LocationModels.swift
-│   └── WeatherModels.swift
-├── Services/
-│   ├── APIError.swift
-│   ├── GeocodingService.swift
-│   └── WeatherService.swift
-├── ViewModels/
-│   └── WeatherViewModel.swift
-├── Views/
-│   └── ContentView.swift
-├── Documentation/
-│   └── Implementation Report.md
-└── WeatherAppApp.swift
-
-Models
-
-The models use Codable and contain only the fields required by the interface. LocationModels.swift decodes the geocoding results, including the location name, coordinates, country, and optional administrative region. WeatherModels.swift decodes the forecast's current object and uses CodingKeys to map Open-Meteo's snake-case JSON keys to clear Swift property names.
-
-Services
-
-GeocodingService and WeatherService each handle one API responsibility. Both services build requests, perform URLSession calls, validate HTTP responses, and decode JSON. Protocol-based service abstractions allow mock implementations to be injected for testing.
-
-ViewModel
-
-WeatherViewModel coordinates the complete search workflow and manages the search text, loading state, weather result, user-facing error message, last query, retry behavior, task cancellation, and stale-result protection.
-
-Views
-
-The SwiftUI interface renders the ViewModel's empty, loading, success, and error states. The design uses a blue-to-indigo gradient, Material cards, rounded corners, semantic typography, SF Symbols, and accessibility metadata.
-
-APIs
-
-SkyCast uses the free Open-Meteo APIs. No API key is required.
-
-Geocoding API
-
+```text
 https://geocoding-api.open-meteo.com/v1/search
+```
 
-Query items:
+Query fields:
 
-name=<location>
-count=1
+```text
+name=<trimmed search>
+count=5
 language=en
 format=json
+```
 
-Forecast API
+Forecast endpoint:
 
+```text
 https://api.open-meteo.com/v1/forecast
+```
 
-Query items:
+Query fields:
 
-latitude=<latitude>
-longitude=<longitude>
+```text
+latitude=<selected latitude>
+longitude=<selected longitude>
 current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m
+daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max
 temperature_unit=fahrenheit
 wind_speed_unit=mph
 timezone=auto
+forecast_days=5
+```
 
-URL Construction
+Requests are built with `URLComponents` and `URLQueryItem`, not URL string concatenation. Debug builds print final request URLs.
 
-Both services use URLComponents and URLQueryItem instead of manually concatenating query strings. This allows Foundation to encode location names and parameters correctly. If the components cannot produce a valid URL, the service throws an invalid-URL error before starting a network request. Debug builds print the final request URLs for troubleshooting.
+## Persistence
 
-Error Handling
+Saved locations use a focused `Codable` model persisted with `UserDefaults` through `SavedLocationStore`. SwiftData was evaluated because the deployment target supports it, but the command-line build environment could not load the SwiftData macro plugin, so the allowed Codable fallback was used to keep the project buildable and deterministic here.
 
-SkyCast distinguishes between:
+Duplicate saved locations are prevented with a stable key based on the Open-Meteo location ID when available, or a deterministic fallback from name and coordinates.
 
-Invalid URL construction
+## File Structure
 
-Network or transport failures
-
-Invalid HTTP responses
-
-Unsuccessful HTTP status codes
-
-Empty geocoding results
-
-JSON decoding failures
-
-Invalid or incomplete API data
-
-Errors are converted into concise messages for the user. When a prior nonempty query exists, the error interface provides a Retry button. Debug builds print a short response snippet for decoding failures without exposing raw JSON in the UI.
-
-Weather-Code Support
-
-WMO weather codes are mapped to readable descriptions and SF Symbols for:
-
-Clear and mainly clear skies
-
-Partly cloudy and overcast conditions
-
-Fog
-
-Drizzle and freezing drizzle
-
-Rain and freezing rain
-
-Snow
-
-Rain and snow showers
-
-Thunderstorms
-
-Unknown conditions
-
-Unrecognized codes use a safe fallback condition and symbol instead of causing a failure.
-
-Requirements
-
-A recent version of Xcode
-
-An iOS Simulator or physical iPhone supported by the project's deployment target
-
-An active internet connection
-
-Getting Started
-
-Clone or download the repository.
-
-Open WeatherApp.xcodeproj in Xcode.
-
-Select the WeatherApp scheme.
-
-Choose an iOS Simulator or connected iPhone.
-
-Build and run with Command-R.
-
-Enter a location such as Murfreesboro and select Search.
-
-No secrets, API keys, or additional packages are required.
-
-Assignment Requirements Covered
-
-URLSession GET requests
-
-Codable JSON decoding
-
-Open-Meteo Geocoding API
-
-Open-Meteo Forecast API
-
-URLComponents and URLQueryItem
-
-Temperature display
-
-Humidity display
-
-Wind-speed display
-
-Weather-condition display
-
-Network, URL, response, empty-result, and decoding error handling
-
-API logic separated from SwiftUI views
-
-Separate geocoding and weather services
-
-ViewModel-managed loading, success, empty, and error states
-
-Professional SwiftUI design
-
-Accessibility support
-
-Known Limitations
-
-Only the first geocoding result is selected.
-
-Users cannot choose among multiple locations with the same name.
-
-The app displays current conditions rather than hourly or multi-day forecasts.
-
-Units are fixed to Fahrenheit and miles per hour.
-
-Weather data requires internet access and Open-Meteo availability.
-
-Future Improvements
-
-Add a location-selection screen for ambiguous searches
-
-Add hourly and multi-day forecasts
-
-Add user-selectable measurement units
-
-Add offline detection and cached weather data
-
-Retry temporary failures with exponential backoff
-
-Add deterministic service and ViewModel tests with mocked network responses
-
-Add saved and recently searched locations
-
-Documentation
-
-See WeatherApp/Documentation/Implementation Report.md for the complete technical implementation report and assignment-compliance details.
-
-Acknowledgments
-
-Weather data and geocoding are provided by Open-Meteo.
+```text
+WeatherApp/
+  Models/
+    LocationModels.swift
+    SavedLocation.swift
+    WeatherModels.swift
+  Services/
+    APIError.swift
+    GeocodingService.swift
+    SavedLocationStore.swift
+    WeatherService.swift
+  ViewModels/
+    WeatherViewModel.swift
+  Views/
+    ContentView.swift
+    DailyForecastCard.swift
+    LocationResultsView.swift
+    SavedLocationsView.swift
+  Documentation/
+    Implementation Report.md
+  WeatherAppApp.swift
+README.md
+```
+
+## Setup and Run
+
+1. Open `WeatherApp.xcodeproj` in Xcode.
+2. Select the existing `WeatherApp` scheme.
+3. Choose an iOS Simulator.
+4. Build and run.
+5. Search for a place such as `Springfield` to see multiple choices, or `Murfreesboro` for weather.
+
+## Build Verification
+
+Project list command:
+
+```bash
+xcodebuild -list -project WeatherApp.xcodeproj
+```
+
+Build command:
+
+```bash
+xcodebuild -project WeatherApp.xcodeproj -scheme WeatherApp -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath /private/tmp/WeatherAppDerivedData CODE_SIGNING_ALLOWED=NO build
+```
+
+Result: `** BUILD SUCCEEDED **`.
+
+The generated Swift compile list confirmed every app Swift file is included exactly once in the `WeatherApp` target.
+
+## Screenshot Placeholders
+
+### Location Search and Selection
+
+_Add screenshot here._
+
+### Current Weather and Five-Day Forecast
+
+_Add screenshot here._
+
+### Saved Locations
+
+_Add screenshot here._
+
+## Known Limitations
+
+- Only up to five geocoding results are shown.
+- Forecast is limited to five daily rows.
+- Units are fixed to Fahrenheit and miles per hour.
+- Saved locations are device-local.
+- The app depends on Open-Meteo availability.
+- Simulator launch and interactive UI checks were blocked in this environment by CoreSimulatorService connection failures.
+
+## Future Improvements
+
+- Mock-network unit tests for every workflow and error case
+- Automatic retry with exponential backoff
+- Offline detection
+- Response caching
+- Rate-limit handling
+- More detailed diagnostics
+- More saved-location sorting and editing options
+- User-selectable units
+
+## Assignment Checklist
+
+| Requirement | Status |
+| --- | --- |
+| Current weather preserved | Complete |
+| Five-day forecast added | Complete |
+| Multiple-location search results added | Complete |
+| Saved favorite locations added | Complete |
+| No API key added | Complete |
+| MVVM retained | Complete |
+| URLSession and async/await used | Complete |
+| Codable models used | Complete |
+| URLComponents and URLQueryItem used | Complete |
+| HTTP validation retained | Complete |
+| Debug URL logging retained | Complete |
+| Debug decoding snippets retained | Complete |
+| Weather-code fallback retained | Complete |
+| Favorite duplicates prevented | Complete |
+| Saved locations skip geocoding | Complete |
+| New Swift files compile in target | Verified |
+| App scheme builds | Verified |
+| Interactive simulator testing | Blocked by CoreSimulatorService |
